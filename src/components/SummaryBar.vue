@@ -34,7 +34,7 @@ defineProps({
       <strong class="summary-value">{{ summary.totalCharacters }} 隻</strong>
     </article>
     <article class="summary-card">
-      <span class="summary-label">已勾選 Boss</span>
+      <span class="summary-label">已勾選每週 Boss</span>
       <strong class="summary-value">{{ summary.totalSelectedBosses }} 個</strong>
     </article>
     <article class="summary-card">

@@ -40,16 +40,16 @@ select {
 }
 
 .page-shell {
-  width: min(1200px, calc(100% - 32px));
+  width: min(1440px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0 48px;
 }
 
 .hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) auto;
+  gap: 28px;
+  align-items: center;
   margin-bottom: 24px;
   padding: 28px;
   border: 1px solid var(--line);
@@ -69,20 +69,79 @@ select {
 
 .hero h1 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1;
+  font-size: clamp(2.2rem, 3.2vw, 3.9rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .hero-text {
   margin: 12px 0 0;
-  max-width: 42rem;
+  max-width: 54rem;
   color: var(--muted);
+  line-height: 1.6;
 }
 
 .hero-actions {
   display: flex;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-content: center;
+  align-items: center;
+}
+
+.actions-menu {
+  position: relative;
+}
+
+.actions-menu[open] {
+  z-index: 10;
+}
+
+.menu-trigger {
+  list-style: none;
+  user-select: none;
+}
+
+.menu-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.menu-trigger::after {
+  content: "▾";
+  margin-left: 8px;
+  font-size: 0.8em;
+}
+
+.actions-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 180px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 8px;
+}
+
+.menu-item-btn {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.menu-item-btn.danger {
+  color: #9a4b12;
 }
 
 .primary-btn,
@@ -126,29 +185,33 @@ select {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
   gap: 14px;
   margin-bottom: 24px;
 }
 
 .summary-card {
-  padding: 18px;
+  padding: 20px 22px;
   border-radius: 24px;
   background: var(--card);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+  min-height: 122px;
 }
 
 .summary-label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-size: 0.88rem;
   color: var(--muted);
+  line-height: 1.45;
 }
 
 .summary-value {
-  font-size: clamp(1.1rem, 2vw, 1.6rem);
+  font-size: clamp(1.25rem, 1.8vw, 2rem);
   font-weight: 700;
+  line-height: 1.2;
+  word-break: keep-all;
 }
 
 .character-section,
@@ -199,6 +262,10 @@ select {
 .character-card.compact.active {
   border-color: rgba(63, 122, 184, 0.35);
   box-shadow: 0 0 0 1px rgba(63, 122, 184, 0.18), 0 14px 32px rgba(63, 122, 184, 0.14);
+}
+
+.character-card.compact.warning {
+  border-color: rgba(214, 122, 48, 0.35);
 }
 
 .character-select-layer {
@@ -256,6 +323,11 @@ select {
   font-weight: 700;
 }
 
+.count-badge.warning {
+  background: rgba(214, 122, 48, 0.14);
+  color: #9a4b12;
+}
+
 .character-job-field {
   display: grid;
   gap: 6px;
@@ -280,6 +352,13 @@ select {
   display: block;
   margin-top: 6px;
   font-size: 1.05rem;
+}
+
+.limit-text {
+  margin: 0;
+  color: #b85d1d;
+  font-size: 0.86rem;
+  font-weight: 600;
 }
 
 .small {
@@ -323,6 +402,13 @@ select {
   gap: 14px;
   grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(0, 1fr)) auto;
   margin: 18px 0;
+}
+
+.boss-meta-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
 }
 
 .filter-wide {
@@ -431,6 +517,14 @@ input::placeholder {
   background: rgba(63, 122, 184, 0.05);
 }
 
+.boss-row.disabled {
+  opacity: 0.55;
+}
+
+.boss-row.disabled:hover {
+  background: transparent;
+}
+
 .boss-main {
   display: flex;
   flex-direction: column;
@@ -490,6 +584,10 @@ input::placeholder {
   margin: 0;
 }
 
+.boss-check input:disabled {
+  cursor: not-allowed;
+}
+
 .boss-price {
   font-weight: 700;
   color: var(--success);
@@ -522,9 +620,22 @@ input::placeholder {
   color: var(--muted);
 }
 
+.hidden-input {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .hero h1 {
+    white-space: normal;
   }
 
   .boss-controls {
@@ -533,6 +644,12 @@ input::placeholder {
 
   .workspace-income {
     width: 100%;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+    max-width: none;
+    flex-wrap: wrap;
   }
 }
 

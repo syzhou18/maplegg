@@ -11,10 +11,13 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  isBossDisabled: {
+    type: Function,
+    default: () => false,
+  },
 });
 
 const emit = defineEmits(["toggle"]);
-
 const selectedSet = computed(() => new Set(props.selectedBossIds));
 
 function onToggle(bossId, checked) {
@@ -37,6 +40,7 @@ function onToggle(bossId, checked) {
       v-for="boss in bosses"
       :key="boss.id"
       class="boss-row"
+      :class="{ disabled: isBossDisabled(boss) }"
       :for="boss.id"
     >
       <div class="boss-main">
@@ -54,6 +58,7 @@ function onToggle(bossId, checked) {
         <input
           :id="boss.id"
           :checked="selectedSet.has(boss.id)"
+          :disabled="isBossDisabled(boss)"
           type="checkbox"
           @change="onToggle(boss.id, $event.target.checked)"
         />

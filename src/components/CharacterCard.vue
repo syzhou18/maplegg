@@ -34,8 +34,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["update:character", "delete", "select"]);
-
 const characterTitle = computed(() => `角色 ${props.index + 1}`);
+const isWeeklyLimitReached = computed(() => props.selectedCount >= 12);
 
 function patchCharacter(patch) {
   emit("update:character", {
@@ -46,7 +46,7 @@ function patchCharacter(patch) {
 </script>
 
 <template>
-  <article class="character-card compact" :class="{ active: isActive }">
+  <article class="character-card compact" :class="{ active: isActive, warning: isWeeklyLimitReached }">
     <button class="character-select-layer" type="button" @click="$emit('select')" :aria-pressed="isActive" />
 
     <div class="character-card-top">
@@ -55,7 +55,7 @@ function patchCharacter(patch) {
         <h3 class="character-card-title">{{ characterTitle }}</h3>
       </div>
       <div class="character-badges">
-        <span class="count-badge">{{ selectedCount }}/12</span>
+        <span class="count-badge" :class="{ warning: isWeeklyLimitReached }">{{ selectedCount }}/12</span>
         <span v-if="isActive" class="active-badge">編輯中</span>
       </div>
     </div>
@@ -77,6 +77,8 @@ function patchCharacter(patch) {
         <strong class="character-total-value">{{ formatMeso(monthlyTotal) }}</strong>
       </div>
     </div>
+
+    <p v-if="isWeeklyLimitReached" class="limit-text">已達每週 12 隻上限。</p>
 
     <div class="character-card-actions">
       <button class="ghost-btn small" type="button" @click="$emit('select')">

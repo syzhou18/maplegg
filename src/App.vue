@@ -8,11 +8,13 @@ import { JOB_OPTIONS } from "./data/jobs";
 import { formatMeso } from "./utils/mesoFormat";
 
 const STORAGE_KEY = "maple_weekly_crystal_calculator_v1";
+const WEEKLY_BOSS_LIMIT = 12;
+const importInput = ref(null);
 
 function createId() {
   return `id_${Math.random().toString(36).slice(2, 10)}`;
 }
- 
+
 function createCharacter() {
   return {
     id: createId(),
@@ -32,11 +34,15 @@ function normalizeCharacter(character) {
   return {
     id: character.id || createId(),
     job: JOB_OPTIONS.includes(character.job) ? character.job : JOB_OPTIONS[0],
-    selectedBossIds: Array.isArray(character.selectedBossIds) ? character.selectedBossIds : [],
+    selectedBossIds: Array.isArray(character.selectedBossIds)
+      ? character.selectedBossIds.filter((bossId) => BOSS_DATA.some((boss) => boss.id === bossId))
+      : [],
     filters: {
       search: character.filters?.search || "",
       difficulty: character.filters?.difficulty || "all",
-      sort: character.filters?.sort || "price_desc",
+      sort: ["price_desc", "price_asc", "level_desc", "boss_asc"].includes(character.filters?.sort)
+        ? character.filters.sort
+        : "price_desc",
       selectedOnly: Boolean(character.filters?.selectedOnly),
       activeTab: character.filters?.activeTab === "monthly" ? "monthly" : "weekly",
     },
@@ -80,9 +86,13 @@ const activeCharacter = computed(
   () => characters.value.find((character) => character.id === activeCharacterId.value) || null,
 );
 
+function getBossById(bossId) {
+  return BOSS_DATA.find((boss) => boss.id === bossId) || null;
+}
+
 function getCharacterTotalByResetType(character, resetType) {
   return character.selectedBossIds.reduce((sum, bossId) => {
-    const boss = BOSS_DATA.find((item) => item.id === bossId);
+    const boss = getBossById(bossId);
     if (!boss || boss.resetType !== resetType) return sum;
     return sum + boss.crystalPrice;
   }, 0);
@@ -90,7 +100,7 @@ function getCharacterTotalByResetType(character, resetType) {
 
 function getCharacterSelectedCountByResetType(character, resetType) {
   return character.selectedBossIds.reduce((count, bossId) => {
-    const boss = BOSS_DATA.find((item) => item.id === bossId);
+    const boss = getBossById(bossId);
     if (!boss || boss.resetType !== resetType) return count;
     return count + 1;
   }, 0);
@@ -163,10 +173,23 @@ const activeCharacterMonthlyTotal = computed(() =>
   activeCharacter.value ? getCharacterTotalByResetType(activeCharacter.value, "每月") : 0,
 );
 
+const activeCharacterWeeklyCount = computed(() =>
+  activeCharacter.value ? getCharacterSelectedCountByResetType(activeCharacter.value, "每週") : 0,
+);
+
 const activeBosses = computed(() => {
   if (!activeCharacter.value) return [];
   return getFilteredBosses(activeCharacter.value, activeCharacter.value.filters.activeTab);
 });
+
+const isActiveCharacterWeeklyLimitReached = computed(() => activeCharacterWeeklyCount.value >= WEEKLY_BOSS_LIMIT);
+
+function isBossCheckboxDisabled(character, boss) {
+  if (!character || !boss) return false;
+  if (boss.resetType !== "每週") return false;
+  if (character.selectedBossIds.includes(boss.id)) return false;
+  return getCharacterSelectedCountByResetType(character, "每週") >= WEEKLY_BOSS_LIMIT;
+}
 
 function addCharacter() {
   const nextCharacter = createCharacter();
@@ -178,6 +201,17 @@ function updateCharacter(characterId, nextCharacter) {
   characters.value = characters.value.map((character) =>
     character.id === characterId ? normalizeCharacter(nextCharacter) : character,
   );
+}
+
+function updateActiveCharacterFilters(filterPatch) {
+  if (!activeCharacter.value) return;
+  updateCharacter(activeCharacter.value.id, {
+    ...activeCharacter.value,
+    filters: {
+      ...activeCharacter.value.filters,
+      ...filterPatch,
+    },
+  });
 }
 
 function selectCharacter(characterId) {
@@ -197,23 +231,43 @@ function deleteCharacter(characterId) {
 function toggleBoss(characterId, bossId, checked) {
   characters.value = characters.value.map((character) => {
     if (character.id !== characterId) return character;
-    const targetBoss = BOSS_DATA.find((item) => item.id === bossId);
+
+    const targetBoss = getBossById(bossId);
     if (!targetBoss) return character;
+
     const exists = character.selectedBossIds.includes(bossId);
-    const selectedBossIds = checked
-      ? exists
-        ? character.selectedBossIds
-        : [
-            ...character.selectedBossIds.filter((id) => {
-              const selectedBoss = BOSS_DATA.find((item) => item.id === id);
-              return selectedBoss?.bossName !== targetBoss.bossName;
-            }),
-            bossId,
-          ]
-      : character.selectedBossIds.filter((id) => id !== bossId);
+    if (!checked) {
+      return {
+        ...character,
+        selectedBossIds: character.selectedBossIds.filter((id) => id !== bossId),
+      };
+    }
+
+    if (exists) return character;
+
+    const filteredIds = character.selectedBossIds.filter((id) => {
+      const selectedBoss = getBossById(id);
+      return selectedBoss?.bossName !== targetBoss.bossName;
+    });
+
+    if (targetBoss.resetType === "每週") {
+      const weeklyCountAfterReplacingSameBoss = filteredIds.reduce((count, id) => {
+        const selectedBoss = getBossById(id);
+        if (!selectedBoss || selectedBoss.resetType !== "每週") return count;
+        return count + 1;
+      }, 0);
+
+      if (weeklyCountAfterReplacingSameBoss >= WEEKLY_BOSS_LIMIT) {
+        return {
+          ...character,
+          selectedBossIds: [...character.selectedBossIds],
+        };
+      }
+    }
+
     return {
       ...character,
-      selectedBossIds,
+      selectedBossIds: [...filteredIds, bossId],
     };
   });
 }
@@ -222,6 +276,45 @@ function clearAll() {
   if (!window.confirm("要清除所有角色與 Boss 勾選資料嗎？")) return;
   characters.value = [];
   activeCharacterId.value = null;
+}
+
+function exportJson() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    dataMeta: DATA_META,
+    activeCharacterId: activeCharacterId.value,
+    characters: characters.value,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "maple-crystal-calculator.json";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function triggerImport() {
+  importInput.value?.click();
+}
+
+async function importJson(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const nextCharacters = Array.isArray(parsed.characters) ? parsed.characters.map(normalizeCharacter) : [];
+    characters.value = nextCharacters;
+    activeCharacterId.value = nextCharacters.some((character) => character.id === parsed.activeCharacterId)
+      ? parsed.activeCharacterId
+      : nextCharacters[0]?.id || null;
+  } catch {
+    window.alert("匯入失敗，請確認 JSON 格式是否正確。");
+  } finally {
+    event.target.value = "";
+  }
 }
 </script>
 
@@ -234,8 +327,16 @@ function clearAll() {
       </div>
       <div class="hero-actions">
         <button class="primary-btn" type="button" @click="addCharacter">新增角色</button>
-        <button class="ghost-btn" type="button" @click="clearAll">清除全部資料</button>
+        <details class="actions-menu">
+          <summary class="ghost-btn menu-trigger">更多操作</summary>
+          <div class="actions-dropdown">
+            <button class="menu-item-btn" type="button" @click="exportJson">匯出 JSON</button>
+            <button class="menu-item-btn" type="button" @click="triggerImport">匯入 JSON</button>
+            <button class="menu-item-btn danger" type="button" @click="clearAll">清除全部資料</button>
+          </div>
+        </details>
       </div>
+      <input ref="importInput" class="hidden-input" type="file" accept="application/json" @change="importJson" />
     </header>
 
     <main>
@@ -297,15 +398,12 @@ function clearAll() {
               :value="activeCharacter.filters.search"
               type="search"
               placeholder="例如：咖凌、賽蓮、黑魔法師"
-              @input="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, search: $event.target.value } })"
+              @input="updateActiveCharacterFilters({ search: $event.target.value })"
             />
           </label>
           <label>
             <span>難度篩選</span>
-            <select
-              :value="activeCharacter.filters.difficulty"
-              @change="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, difficulty: $event.target.value } })"
-            >
+            <select :value="activeCharacter.filters.difficulty" @change="updateActiveCharacterFilters({ difficulty: $event.target.value })">
               <option value="all">全部</option>
               <option v-for="difficulty in DIFFICULTY_OPTIONS" :key="difficulty" :value="difficulty">
                 {{ difficulty }}
@@ -314,10 +412,7 @@ function clearAll() {
           </label>
           <label>
             <span>價格排序</span>
-            <select
-              :value="activeCharacter.filters.sort"
-              @change="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, sort: $event.target.value } })"
-            >
+            <select :value="activeCharacter.filters.sort" @change="updateActiveCharacterFilters({ sort: $event.target.value })">
               <option value="price_desc">由高到低</option>
               <option value="price_asc">由低到高</option>
               <option value="level_desc">建議等級</option>
@@ -325,13 +420,16 @@ function clearAll() {
             </select>
           </label>
           <label class="checkbox-label">
-            <input
-              :checked="activeCharacter.filters.selectedOnly"
-              type="checkbox"
-              @change="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, selectedOnly: $event.target.checked } })"
-            />
+            <input :checked="activeCharacter.filters.selectedOnly" type="checkbox" @change="updateActiveCharacterFilters({ selectedOnly: $event.target.checked })" />
             <span>只看已勾選</span>
           </label>
+        </div>
+
+        <div class="boss-meta">
+          <div class="boss-meta-group">
+            <span class="boss-count">已勾選每週 Boss：{{ activeCharacterWeeklyCount }}/{{ WEEKLY_BOSS_LIMIT }}</span>
+            <span v-if="isActiveCharacterWeeklyLimitReached" class="limit-text">已達每週 12 隻上限，必須先取消其他每週 Boss 才能再勾選。</span>
+          </div>
         </div>
 
         <div class="boss-tabs" role="tablist" aria-label="Boss 分頁">
@@ -339,7 +437,7 @@ function clearAll() {
             class="tab-btn"
             :class="{ active: activeCharacter.filters.activeTab === 'weekly' }"
             type="button"
-            @click="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, activeTab: 'weekly' } })"
+            @click="updateActiveCharacterFilters({ activeTab: 'weekly' })"
           >
             每週 Boss
           </button>
@@ -347,7 +445,7 @@ function clearAll() {
             class="tab-btn"
             :class="{ active: activeCharacter.filters.activeTab === 'monthly' }"
             type="button"
-            @click="updateCharacter(activeCharacter.id, { ...activeCharacter, filters: { ...activeCharacter.filters, activeTab: 'monthly' } })"
+            @click="updateActiveCharacterFilters({ activeTab: 'monthly' })"
           >
             每月 Boss
           </button>
@@ -356,6 +454,7 @@ function clearAll() {
         <BossCheckboxList
           :bosses="activeBosses"
           :selected-boss-ids="activeCharacter.selectedBossIds"
+          :is-boss-disabled="(boss) => isBossCheckboxDisabled(activeCharacter, boss)"
           @toggle="toggleBoss(activeCharacter.id, $event.bossId, $event.checked)"
         />
       </section>
