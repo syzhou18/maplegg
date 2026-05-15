@@ -495,7 +495,7 @@ input::placeholder {
 .boss-list-head,
 .boss-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(96px, 140px) 80px 72px;
+  grid-template-columns: minmax(0, 1.8fr) minmax(120px, 160px) 80px minmax(110px, 132px) 72px;
   gap: 14px;
   align-items: center;
   padding: 14px 16px;
@@ -593,6 +593,31 @@ input::placeholder {
   color: var(--success);
   overflow-wrap: anywhere;
   font-size: 1rem;
+}
+
+.boss-price-stack,
+.boss-party {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.boss-share-price,
+.boss-party-hint,
+.boss-party-static {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.party-select {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.party-select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .empty-characters {

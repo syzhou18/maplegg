@@ -20,6 +20,7 @@ function createCharacter() {
     id: createId(),
     job: JOB_OPTIONS[0],
     selectedBossIds: [],
+    bossPartySizes: {},
     filters: {
       search: "",
       difficulty: "all",
@@ -30,13 +31,30 @@ function createCharacter() {
   };
 }
 
+function clampBossPartySize(boss, partySize) {
+  const maxPartySize = boss?.maxPartySize || 1;
+  const parsedSize = Number.parseInt(partySize, 10);
+  if (!Number.isFinite(parsedSize)) return 1;
+  return Math.min(Math.max(parsedSize, 1), maxPartySize);
+}
+
 function normalizeCharacter(character) {
+  const selectedBossIds = Array.isArray(character.selectedBossIds)
+    ? character.selectedBossIds.filter((bossId) => BOSS_DATA.some((boss) => boss.id === bossId))
+    : [];
+
+  const bossPartySizes = Object.fromEntries(
+    selectedBossIds.map((bossId) => {
+      const boss = getBossById(bossId);
+      return [bossId, clampBossPartySize(boss, character.bossPartySizes?.[bossId] ?? 1)];
+    }),
+  );
+
   return {
     id: character.id || createId(),
     job: JOB_OPTIONS.includes(character.job) ? character.job : JOB_OPTIONS[0],
-    selectedBossIds: Array.isArray(character.selectedBossIds)
-      ? character.selectedBossIds.filter((bossId) => BOSS_DATA.some((boss) => boss.id === bossId))
-      : [],
+    selectedBossIds,
+    bossPartySizes,
     filters: {
       search: character.filters?.search || "",
       difficulty: character.filters?.difficulty || "all",
@@ -90,11 +108,23 @@ function getBossById(bossId) {
   return BOSS_DATA.find((boss) => boss.id === bossId) || null;
 }
 
+function getBossPartySize(character, bossId) {
+  const boss = getBossById(bossId);
+  if (!boss) return 1;
+  return clampBossPartySize(boss, character?.bossPartySizes?.[bossId] ?? 1);
+}
+
+function getBossSplitPrice(character, bossId) {
+  const boss = getBossById(bossId);
+  if (!boss) return 0;
+  return Math.floor(boss.crystalPrice / getBossPartySize(character, bossId));
+}
+
 function getCharacterTotalByResetType(character, resetType) {
   return character.selectedBossIds.reduce((sum, bossId) => {
     const boss = getBossById(bossId);
     if (!boss || boss.resetType !== resetType) return sum;
-    return sum + boss.crystalPrice;
+    return sum + getBossSplitPrice(character, bossId);
   }, 0);
 }
 
@@ -214,6 +244,23 @@ function updateActiveCharacterFilters(filterPatch) {
   });
 }
 
+function updateBossPartySize(characterId, bossId, nextPartySize) {
+  characters.value = characters.value.map((character) => {
+    if (character.id !== characterId) return character;
+
+    const boss = getBossById(bossId);
+    if (!boss) return character;
+
+    return {
+      ...character,
+      bossPartySizes: {
+        ...character.bossPartySizes,
+        [bossId]: clampBossPartySize(boss, nextPartySize),
+      },
+    };
+  });
+}
+
 function selectCharacter(characterId) {
   activeCharacterId.value = characterId;
 }
@@ -237,18 +284,32 @@ function toggleBoss(characterId, bossId, checked) {
 
     const exists = character.selectedBossIds.includes(bossId);
     if (!checked) {
+      const nextPartySizes = { ...character.bossPartySizes };
+      delete nextPartySizes[bossId];
+
       return {
         ...character,
         selectedBossIds: character.selectedBossIds.filter((id) => id !== bossId),
+        bossPartySizes: nextPartySizes,
       };
     }
 
     if (exists) return character;
 
+    const sameBossPartySize = character.selectedBossIds.reduce((partySize, id) => {
+      const selectedBoss = getBossById(id);
+      if (selectedBoss?.bossName !== targetBoss.bossName) return partySize;
+      return character.bossPartySizes?.[id] ?? partySize;
+    }, 1);
+
     const filteredIds = character.selectedBossIds.filter((id) => {
       const selectedBoss = getBossById(id);
       return selectedBoss?.bossName !== targetBoss.bossName;
     });
+
+    const nextPartySizes = Object.fromEntries(
+      Object.entries(character.bossPartySizes || {}).filter(([id]) => filteredIds.includes(id)),
+    );
 
     if (targetBoss.resetType === "每週") {
       const weeklyCountAfterReplacingSameBoss = filteredIds.reduce((count, id) => {
@@ -268,6 +329,10 @@ function toggleBoss(characterId, bossId, checked) {
     return {
       ...character,
       selectedBossIds: [...filteredIds, bossId],
+      bossPartySizes: {
+        ...nextPartySizes,
+        [bossId]: clampBossPartySize(targetBoss, sameBossPartySize),
+      },
     };
   });
 }
@@ -454,8 +519,11 @@ async function importJson(event) {
         <BossCheckboxList
           :bosses="activeBosses"
           :selected-boss-ids="activeCharacter.selectedBossIds"
+          :boss-party-sizes="activeCharacter.bossPartySizes"
           :is-boss-disabled="(boss) => isBossCheckboxDisabled(activeCharacter, boss)"
+          :get-boss-split-price="(bossId) => getBossSplitPrice(activeCharacter, bossId)"
           @toggle="toggleBoss(activeCharacter.id, $event.bossId, $event.checked)"
+          @update-party-size="updateBossPartySize(activeCharacter.id, $event.bossId, $event.partySize)"
         />
       </section>
     </main>

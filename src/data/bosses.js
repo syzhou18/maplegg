@@ -1,32 +1,32 @@
 export const DATA_META = {
   version: "v278",
-  updatedAt: "2026/04/28",
+  updatedAt: "2026/05/15",
 };
 
 export const BOSS_DATA = [
-  { id: "baldrix_hard", bossName: "巴德利斯", difficulty: "困難", level: 290, resetType: "每週", crystalPrice: 840000000 },
-  { id: "baldrix_normal", bossName: "巴德利斯", difficulty: "普通", level: 290, resetType: "每週", crystalPrice: 560000000 },
-  { id: "limbo_hard", bossName: "林波", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 750000000 },
-  { id: "limbo_normal", bossName: "林波", difficulty: "普通", level: 285, resetType: "每週", crystalPrice: 420000000 },
+  { id: "baldrix_hard", bossName: "巴德利斯", difficulty: "困難", level: 290, resetType: "每週", crystalPrice: 840000000, maxPartySize: 3 },
+  { id: "baldrix_normal", bossName: "巴德利斯", difficulty: "普通", level: 290, resetType: "每週", crystalPrice: 560000000, maxPartySize: 3 },
+  { id: "limbo_hard", bossName: "林波", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 750000000, maxPartySize: 3 },
+  { id: "limbo_normal", bossName: "林波", difficulty: "普通", level: 285, resetType: "每週", crystalPrice: 420000000, maxPartySize: 3 },
 
-  { id: "kaling_extreme", bossName: "咖凌", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1440000000 },
-  { id: "kaling_hard", bossName: "咖凌", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 780000000 },
-  { id: "kaling_normal", bossName: "咖凌", difficulty: "普通", level: 285, resetType: "每週", crystalPrice: 360000000 },
-  { id: "kaling_easy", bossName: "咖凌", difficulty: "簡單", level: 275, resetType: "每週", crystalPrice: 150000000 },
+  { id: "kaling_extreme", bossName: "咖凌", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1440000000, maxPartySize: 6 },
+  { id: "kaling_hard", bossName: "咖凌", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 780000000, maxPartySize: 6 },
+  { id: "kaling_normal", bossName: "咖凌", difficulty: "普通", level: 285, resetType: "每週", crystalPrice: 360000000, maxPartySize: 6 },
+  { id: "kaling_easy", bossName: "咖凌", difficulty: "簡單", level: 275, resetType: "每週", crystalPrice: 150000000, maxPartySize: 6 },
 
-  { id: "adversary_extreme", bossName: "最初的敵對者", difficulty: "極限", level: 290, resetType: "每週", crystalPrice: 1550000000 },
-  { id: "adversary_hard", bossName: "最初的敵對者", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 850000000 },
-  { id: "adversary_normal", bossName: "最初的敵對者", difficulty: "普通", level: 280, resetType: "每週", crystalPrice: 420000000 },
-  { id: "adversary_easy", bossName: "最初的敵對者", difficulty: "簡單", level: 270, resetType: "每週", crystalPrice: 180000000 },
+  { id: "adversary_extreme", bossName: "最初的敵對者", difficulty: "極限", level: 290, resetType: "每週", crystalPrice: 1550000000, maxPartySize: 3 },
+  { id: "adversary_hard", bossName: "最初的敵對者", difficulty: "困難", level: 285, resetType: "每週", crystalPrice: 850000000, maxPartySize: 3 },
+  { id: "adversary_normal", bossName: "最初的敵對者", difficulty: "普通", level: 280, resetType: "每週", crystalPrice: 420000000, maxPartySize: 3 },
+  { id: "adversary_easy", bossName: "最初的敵對者", difficulty: "簡單", level: 270, resetType: "每週", crystalPrice: 180000000, maxPartySize: 3 },
 
-  { id: "carlos_extreme", bossName: "卡洛斯", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1350000000 },
-  { id: "carlos_chaos", bossName: "卡洛斯", difficulty: "混沌", level: 285, resetType: "每週", crystalPrice: 950000000 },
-  { id: "carlos_normal", bossName: "卡洛斯", difficulty: "普通", level: 280, resetType: "每週", crystalPrice: 380000000 },
-  { id: "carlos_easy", bossName: "卡洛斯", difficulty: "簡單", level: 270, resetType: "每週", crystalPrice: 160000000 },
+  { id: "carlos_extreme", bossName: "卡洛斯", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1350000000, maxPartySize: 6 },
+  { id: "carlos_chaos", bossName: "卡洛斯", difficulty: "混沌", level: 285, resetType: "每週", crystalPrice: 950000000, maxPartySize: 6 },
+  { id: "carlos_normal", bossName: "卡洛斯", difficulty: "普通", level: 280, resetType: "每週", crystalPrice: 380000000, maxPartySize: 6 },
+  { id: "carlos_easy", bossName: "卡洛斯", difficulty: "簡單", level: 270, resetType: "每週", crystalPrice: 160000000, maxPartySize: 6 },
 
-  { id: "seren_extreme", bossName: "賽蓮", difficulty: "極限", level: 280, resetType: "每週", crystalPrice: 600000000 },
-  { id: "seren_hard", bossName: "賽蓮", difficulty: "困難", level: 275, resetType: "每週", crystalPrice: 300000000 },
-  { id: "seren_normal", bossName: "賽蓮", difficulty: "普通", level: 270, resetType: "每週", crystalPrice: 135000000 },
+  { id: "seren_extreme", bossName: "賽蓮", difficulty: "極限", level: 280, resetType: "每週", crystalPrice: 600000000, maxPartySize: 6 },
+  { id: "seren_hard", bossName: "賽蓮", difficulty: "困難", level: 275, resetType: "每週", crystalPrice: 300000000, maxPartySize: 6 },
+  { id: "seren_normal", bossName: "賽蓮", difficulty: "普通", level: 270, resetType: "每週", crystalPrice: 135000000, maxPartySize: 6 },
 
   { id: "blackmage_extreme", bossName: "黑魔法師", difficulty: "極限", level: 275, resetType: "每月", crystalPrice: 2000000000 },
   { id: "blackmage_hard", bossName: "黑魔法師", difficulty: "困難", level: 265, resetType: "每月", crystalPrice: 850000000 },
@@ -54,12 +54,12 @@ export const BOSS_DATA = [
   { id: "damien_hard", bossName: "戴米安", difficulty: "困難", level: 210, resetType: "每週", crystalPrice: 60500000 },
   { id: "damien_normal", bossName: "戴米安", difficulty: "普通", level: 210, resetType: "每週", crystalPrice: 29800000 },
 
-  { id: "lotus_extreme", bossName: "史烏", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1200000000 },
-  { id: "lotus_hard", bossName: "史烏", difficulty: "困難", level: 210, resetType: "每週", crystalPrice: 61000000 },
-  { id: "lotus_normal", bossName: "史烏", difficulty: "普通", level: 210, resetType: "每週", crystalPrice: 30100000 },
+  { id: "lotus_extreme", bossName: "史烏", difficulty: "極限", level: 285, resetType: "每週", crystalPrice: 1200000000, maxPartySize: 3 },
+  { id: "lotus_hard", bossName: "史烏", difficulty: "困難", level: 210, resetType: "每週", crystalPrice: 61000000, maxPartySize: 3 },
+  { id: "lotus_normal", bossName: "史烏", difficulty: "普通", level: 210, resetType: "每週", crystalPrice: 30100000, maxPartySize: 3 },
 
-  { id: "marionette_extreme", bossName: "瑪麗西亞", difficulty: "極限", level: 250, resetType: "每週", crystalPrice: 450000000 },
-  { id: "marionette_normal", bossName: "瑪麗西亞", difficulty: "普通", level: 250, resetType: "每週", crystalPrice: 180000000 },
+  { id: "marionette_extreme", bossName: "瑪麗西亞", difficulty: "極限", level: 250, resetType: "每週", crystalPrice: 450000000, maxPartySize: 3 },
+  { id: "marionette_normal", bossName: "瑪麗西亞", difficulty: "普通", level: 250, resetType: "每週", crystalPrice: 180000000, maxPartySize: 3 },
 ];
 
 export const DIFFICULTY_OPTIONS = [...new Set(BOSS_DATA.map((boss) => boss.difficulty))];
