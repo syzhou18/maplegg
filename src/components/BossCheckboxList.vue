@@ -25,11 +25,29 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["toggle", "update-party-size"]);
+const emit = defineEmits(["toggle", "update-party-size", "reset-boss"]);
 const selectedSet = computed(() => new Set(props.selectedBossIds));
 
-function onToggle(bossId, checked) {
+function getActiveBoss(row) {
+  return row.selectedBoss || row.displayBoss;
+}
+
+function isRowSelected(row) {
+  return Boolean(row.selectedBossId);
+}
+
+function onToggle(row, checked) {
+  const boss = getActiveBoss(row);
+  if (!boss) return;
+  const bossId = checked ? boss.id : row.selectedBossId || boss.id;
   emit("toggle", { bossId, checked });
+}
+
+function onDifficultyChange(row, bossId) {
+  if (!bossId) return;
+  if (row.selectedBossId) {
+    emit("toggle", { bossId, checked: true });
+  }
 }
 
 function getPartySizeOptions(boss) {
@@ -55,62 +73,73 @@ function onPartySizeChange(bossId, partySize) {
 
 <template>
   <div class="boss-list-wrap">
-    <div class="boss-list-head">
-      <span>Boss 與難度</span>
-      <span>價格 / 實拿</span>
-      <span>重置</span>
-      <span>團打</span>
+    <div class="boss-list-head grouped">
+      <span>Boss</span>
+      <span>難度</span>
+      <span>資訊</span>
+      <span>分帳</span>
       <span>勾選</span>
     </div>
 
-    <div v-if="bosses.length === 0" class="empty-state">目前沒有符合條件的 Boss。</div>
+    <div v-if="bosses.length === 0" class="empty-state">
+      目前沒有符合條件的 Boss。
+    </div>
 
-    <label
-      v-for="boss in bosses"
-      :key="boss.id"
-      class="boss-row"
-      :class="{ disabled: isBossDisabled(boss) }"
-      :for="boss.id"
+    <div
+      v-for="row in bosses"
+      :key="row.bossName"
+      class="boss-row grouped compact no-wrap"
+      :class="{ selected: isRowSelected(row), disabled: isBossDisabled(getActiveBoss(row)) }"
     >
-      <div class="boss-main">
-        <strong class="boss-name">{{ boss.bossName }}</strong>
-        <div class="boss-detail-line">
-          <span class="boss-difficulty">{{ boss.difficulty }}</span>
-          <span class="boss-sub">建議等級 {{ boss.level }}</span>
+      <div class="boss-main compact no-wrap">
+        <div class="boss-title-row compact no-wrap">
+          <strong class="boss-name">{{ row.bossName }}</strong>
+          <span v-if="isRowSelected(row)" class="boss-selected-chip">已勾選</span>
+        </div>
+        <div class="boss-inline-meta no-wrap">
+          <span class="boss-sub">Lv. {{ getActiveBoss(row).level }}</span>
+          <span class="boss-reset-inline">{{ getActiveBoss(row).resetType }}</span>
+          <span class="boss-inline-price">{{ formatMeso(getActiveBoss(row).crystalPrice) }}</span>
+          <span v-if="isRowSelected(row)" class="boss-inline-share">實拿 {{ formatMeso(getBossSplitPrice(row.selectedBossId)) }}</span>
         </div>
       </div>
 
-      <div class="boss-price-stack">
-        <span class="boss-price">{{ formatMeso(boss.crystalPrice) }}</span>
-        <span v-if="selectedSet.has(boss.id) && (boss.maxPartySize || 1) > 1" class="boss-share-price">
-          實拿 {{ formatMeso(getBossSplitPrice(boss.id)) }}
-        </span>
+      <div class="boss-difficulty-select-wrap compact no-wrap">
+        <select
+          class="boss-difficulty-select"
+          :value="row.selectedBossId || row.displayBoss.id"
+          @change="onDifficultyChange(row, $event.target.value)"
+        >
+          <option v-for="boss in row.bosses" :key="boss.id" :value="boss.id">
+            {{ boss.difficulty }}
+          </option>
+        </select>
       </div>
-      <span class="boss-reset">{{ boss.resetType }}</span>
-      <div class="boss-party">
-        <template v-if="(boss.maxPartySize || 1) > 1">
+
+      <div class="boss-party compact no-wrap">
+        <template v-if="(getActiveBoss(row).maxPartySize || 1) > 1">
           <select
             class="party-select"
-            :value="getSelectedPartySize(boss.id)"
-            :disabled="!selectedSet.has(boss.id)"
-            @change="onPartySizeChange(boss.id, $event.target.value)"
+            :value="getSelectedPartySize(row.selectedBossId || getActiveBoss(row).id)"
+            :disabled="!isRowSelected(row)"
+            @change="onPartySizeChange(row.selectedBossId || getActiveBoss(row).id, $event.target.value)"
           >
-            <option v-for="size in getPartySizeOptions(boss)" :key="size" :value="size">{{ size }} 人</option>
+            <option v-for="size in getPartySizeOptions(getActiveBoss(row))" :key="size" :value="size">{{ size }} 人</option>
           </select>
-          <span class="boss-party-hint">{{ getPartySizeLabel(boss) }}</span>
+          <span class="boss-party-hint">{{ getPartySizeLabel(getActiveBoss(row)) }}</span>
         </template>
         <span v-else class="boss-party-static">單人</span>
       </div>
 
       <div class="boss-check">
         <input
-          :id="boss.id"
-          :checked="selectedSet.has(boss.id)"
-          :disabled="isBossDisabled(boss)"
+          :id="row.bossName"
+          :checked="isRowSelected(row)"
+          :disabled="isBossDisabled(getActiveBoss(row))"
           type="checkbox"
-          @change="onToggle(boss.id, $event.target.checked)"
+          @change="onToggle(row, $event.target.checked)"
         />
       </div>
-    </label>
+    </div>
   </div>
 </template>

@@ -46,17 +46,20 @@ function patchCharacter(patch) {
 </script>
 
 <template>
-  <article class="character-card compact" :class="{ active: isActive, warning: isWeeklyLimitReached }">
+  <article class="character-card" :class="{ active: isActive, warning: isWeeklyLimitReached }">
     <button class="character-select-layer" type="button" @click="$emit('select')" :aria-pressed="isActive" />
+
+    <div class="character-card-glow" aria-hidden="true" />
 
     <div class="character-card-top">
       <div>
-        <div class="card-kicker">角色卡</div>
-        <h3 class="character-card-title">{{ characterTitle }}</h3>
+        <div class="card-kicker">{{ characterTitle }}</div>
+        <h3 class="character-card-title">{{ character.job }}</h3>
       </div>
       <div class="character-badges">
-        <span class="count-badge" :class="{ warning: isWeeklyLimitReached }">{{ selectedCount }}/12</span>
+        <span class="count-badge" :class="{ warning: isWeeklyLimitReached }">每週 {{ selectedCount }}/12</span>
         <span v-if="isActive" class="active-badge">編輯中</span>
+        <span v-else class="inactive-badge">可切換</span>
       </div>
     </div>
 
@@ -68,23 +71,25 @@ function patchCharacter(patch) {
     </label>
 
     <div class="character-totals">
-      <div class="character-total-block">
-        <span class="income-label">每週</span>
+      <div class="character-total-block weekly">
+        <span class="income-label">每週收益</span>
         <strong class="character-total-value">{{ formatMeso(weeklyTotal) }}</strong>
       </div>
       <div class="character-total-block monthly">
-        <span class="income-label">每月</span>
+        <span class="income-label">每月收益</span>
         <strong class="character-total-value">{{ formatMeso(monthlyTotal) }}</strong>
       </div>
     </div>
 
-    <p v-if="isWeeklyLimitReached" class="limit-text">已達每週 12 隻上限。</p>
+    <div class="character-status-row">
+      <span class="character-status-text">目前已配置 {{ selectedCount }} 個每週 Boss</span>
+      <span v-if="isWeeklyLimitReached" class="limit-chip">已達上限</span>
+    </div>
 
     <div class="character-card-actions">
-      <button class="ghost-btn small" type="button" @click="$emit('select')">
-        {{ isActive ? "目前角色" : "切換到這隻" }}
-      </button>
-      <button class="text-btn" type="button" @click="$emit('delete')">刪除</button>
+      <span v-if="isActive" class="character-current-label">目前角色</span>
+      <button v-else class="ghost-btn small" type="button" @click="$emit('select')">切換到這隻</button>
+      <button class="text-btn danger-text" type="button" @click="$emit('delete')">刪除角色</button>
     </div>
   </article>
 </template>

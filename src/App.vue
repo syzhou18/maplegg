@@ -3,13 +3,24 @@ import { computed, ref, watch } from "vue";
 import CharacterCard from "./components/CharacterCard.vue";
 import BossCheckboxList from "./components/BossCheckboxList.vue";
 import SummaryBar from "./components/SummaryBar.vue";
-import { BOSS_DATA, DATA_META, DIFFICULTY_OPTIONS } from "./data/bosses";
+import { BOSS_DATA, DATA_META } from "./data/bosses";
 import { JOB_OPTIONS } from "./data/jobs";
 import { formatMeso } from "./utils/mesoFormat";
 
 const STORAGE_KEY = "maple_weekly_crystal_calculator_v1";
+const THEME_STORAGE_KEY = "maple_weekly_crystal_theme_v1";
 const WEEKLY_BOSS_LIMIT = 12;
 const importInput = ref(null);
+const theme = ref(loadTheme());
+
+function loadTheme() {
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return savedTheme === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
 
 function createId() {
   return `id_${Math.random().toString(36).slice(2, 10)}`;
@@ -100,6 +111,15 @@ watch(
   { deep: true },
 );
 
+watch(
+  theme,
+  (nextTheme) => {
+    document.documentElement.dataset.theme = nextTheme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  },
+  { immediate: true },
+);
+
 const activeCharacter = computed(
   () => characters.value.find((character) => character.id === activeCharacterId.value) || null,
 );
@@ -136,37 +156,60 @@ function getCharacterSelectedCountByResetType(character, resetType) {
   }, 0);
 }
 
-function getFilteredBosses(character, activeTab) {
+function getBossComparator(sort) {
+  switch (sort) {
+    case "price_asc":
+      return (a, b) => a.crystalPrice - b.crystalPrice || a.level - b.level;
+    case "level_desc":
+      return (a, b) => b.level - a.level || b.crystalPrice - a.crystalPrice;
+    case "boss_asc":
+      return (a, b) => a.bossName.localeCompare(b.bossName, "zh-Hant") || a.crystalPrice - b.crystalPrice;
+    default:
+      return (a, b) => b.crystalPrice - a.crystalPrice || b.level - a.level;
+  }
+}
+
+function getGroupedBosses(character, activeTab) {
   const targetResetType = activeTab === "monthly" ? "每月" : "每週";
-  let list = BOSS_DATA.filter((boss) => boss.resetType === targetResetType);
   const search = character.filters.search.trim();
+  const selectedBossIdSet = new Set(character.selectedBossIds);
+  const comparator = getBossComparator(character.filters.sort);
+
+  let list = BOSS_DATA.filter((boss) => boss.resetType === targetResetType);
 
   if (search) {
     list = list.filter((boss) => boss.bossName.includes(search));
   }
-  if (character.filters.difficulty !== "all") {
-    list = list.filter((boss) => boss.difficulty === character.filters.difficulty);
-  }
-  if (character.filters.selectedOnly) {
-    list = list.filter((boss) => character.selectedBossIds.includes(boss.id));
-  }
 
-  switch (character.filters.sort) {
-    case "price_asc":
-      list.sort((a, b) => a.crystalPrice - b.crystalPrice);
-      break;
-    case "level_desc":
-      list.sort((a, b) => b.level - a.level || b.crystalPrice - a.crystalPrice);
-      break;
-    case "boss_asc":
-      list.sort((a, b) => a.bossName.localeCompare(b.bossName, "zh-Hant") || a.crystalPrice - b.crystalPrice);
-      break;
-    default:
-      list.sort((a, b) => b.crystalPrice - a.crystalPrice);
-      break;
-  }
+  const groups = list.reduce((map, boss) => {
+    if (!map.has(boss.bossName)) {
+      map.set(boss.bossName, []);
+    }
+    map.get(boss.bossName).push(boss);
+    return map;
+  }, new Map());
 
-  return list;
+  const groupedRows = Array.from(groups.entries()).map(([bossName, bosses]) => {
+    const sortedBosses = [...bosses].sort(comparator);
+    const selectedBoss = sortedBosses.find((boss) => selectedBossIdSet.has(boss.id)) || null;
+    const displayBoss = selectedBoss || sortedBosses[0];
+
+    return {
+      bossName,
+      bosses: sortedBosses,
+      selectedBoss,
+      displayBoss,
+      selectedBossId: selectedBoss?.id || null,
+    };
+  });
+
+  const visibleRows = character.filters.selectedOnly
+    ? groupedRows.filter((row) => row.selectedBossId)
+    : groupedRows;
+
+  visibleRows.sort((a, b) => comparator(a.displayBoss, b.displayBoss));
+
+  return visibleRows;
 }
 
 const summary = computed(() => {
@@ -209,10 +252,15 @@ const activeCharacterWeeklyCount = computed(() =>
 
 const activeBosses = computed(() => {
   if (!activeCharacter.value) return [];
-  return getFilteredBosses(activeCharacter.value, activeCharacter.value.filters.activeTab);
+  return getGroupedBosses(activeCharacter.value, activeCharacter.value.filters.activeTab);
 });
 
 const isActiveCharacterWeeklyLimitReached = computed(() => activeCharacterWeeklyCount.value >= WEEKLY_BOSS_LIMIT);
+const activeFilterCount = computed(() => {
+  if (!activeCharacter.value) return 0;
+  const { search, selectedOnly } = activeCharacter.value.filters;
+  return Number(Boolean(search.trim())) + Number(selectedOnly);
+});
 
 function isBossCheckboxDisabled(character, boss) {
   if (!character || !boss) return false;
@@ -244,6 +292,15 @@ function updateActiveCharacterFilters(filterPatch) {
   });
 }
 
+function resetActiveCharacterFilters() {
+  if (!activeCharacter.value) return;
+  updateActiveCharacterFilters({
+    search: "",
+    sort: "price_desc",
+    selectedOnly: false,
+  });
+}
+
 function updateBossPartySize(characterId, bossId, nextPartySize) {
   characters.value = characters.value.map((character) => {
     if (character.id !== characterId) return character;
@@ -258,6 +315,22 @@ function updateBossPartySize(characterId, bossId, nextPartySize) {
         [bossId]: clampBossPartySize(boss, nextPartySize),
       },
     };
+  });
+}
+
+function resetBossSelection(characterId) {
+  const character = characters.value.find((item) => item.id === characterId);
+  if (!character) return;
+
+  const nextBossPartySizes = { ...character.bossPartySizes };
+  for (const bossId of character.selectedBossIds) {
+    delete nextBossPartySizes[bossId];
+  }
+
+  updateCharacter(characterId, {
+    ...character,
+    selectedBossIds: [],
+    bossPartySizes: nextBossPartySizes,
   });
 }
 
@@ -381,38 +454,69 @@ async function importJson(event) {
     event.target.value = "";
   }
 }
+
+function toggleTheme() {
+  theme.value = theme.value === "dark" ? "light" : "dark";
+}
 </script>
 
 <template>
   <div class="page-shell">
     <header class="hero">
       <div class="hero-copy">
-        <h1>新楓之谷每週結晶石計算機</h1>
-        <p class="hero-text">先建立角色，再切換到下方 Boss 工作區勾選難度與計算結晶石。</p>
+        <div class="eyebrow">Maplegg</div>
+        <h1>Maplegg</h1>
       </div>
-      <div class="hero-actions">
-        <button class="primary-btn" type="button" @click="addCharacter">新增角色</button>
-        <details class="actions-menu">
-          <summary class="ghost-btn menu-trigger">更多操作</summary>
-          <div class="actions-dropdown">
-            <button class="menu-item-btn" type="button" @click="exportJson">匯出 JSON</button>
-            <button class="menu-item-btn" type="button" @click="triggerImport">匯入 JSON</button>
-            <button class="menu-item-btn danger" type="button" @click="clearAll">清除全部資料</button>
+
+      <div class="hero-side">
+        <div class="hero-panel">
+          <div class="hero-panel-top">
+            <div>
+              <div class="card-kicker">狀態</div>
+            </div>
+            <button class="theme-btn" type="button" @click="toggleTheme">
+              {{ theme === "dark" ? "切換亮色" : "切換深色" }}
+            </button>
           </div>
-        </details>
+
+          <div class="hero-panel-stats">
+            <div class="hero-stat-card accent">
+              <span class="hero-stat-label">角色數量</span>
+              <strong class="hero-stat-value">{{ summary.totalCharacters }}</strong>
+            </div>
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">每週已選 Boss</span>
+              <strong class="hero-stat-value">{{ summary.totalSelectedBosses }}</strong>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <button class="primary-btn" type="button" @click="addCharacter">新增角色</button>
+            <details class="actions-menu">
+              <summary class="ghost-btn menu-trigger">更多操作</summary>
+              <div class="actions-dropdown">
+                <button class="menu-item-btn" type="button" @click="exportJson">匯出 JSON</button>
+                <button class="menu-item-btn" type="button" @click="triggerImport">匯入 JSON</button>
+                <button class="menu-item-btn danger" type="button" @click="clearAll">清除全部資料</button>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <input ref="importInput" class="hidden-input" type="file" accept="application/json" @change="importJson" />
       </div>
-      <input ref="importInput" class="hidden-input" type="file" accept="application/json" @change="importJson" />
     </header>
 
-    <main>
+    <main class="page-main">
       <SummaryBar :summary="summary" :data-meta="DATA_META" />
 
       <section v-if="characters.length > 0" class="character-section" aria-label="角色列表">
-        <div class="section-header">
+        <div class="section-header section-header-spread">
           <div>
-            <div class="card-kicker">角色列表</div>
-            <h2 class="section-title-xl">先選角色，再編輯 Boss</h2>
+            <div class="card-kicker">角色</div>
+            <h2 class="section-title-xl">角色列表</h2>
           </div>
+          <div class="section-side-note">{{ summary.totalCharacters }} 隻</div>
         </div>
 
         <div class="character-grid">
@@ -434,30 +538,63 @@ async function importJson(event) {
       </section>
 
       <section v-else class="empty-characters" aria-label="空角色列表">
-        <p class="empty-characters-title">目前還沒有角色</p>
-        <p class="empty-characters-text">按上方「新增角色」後，再到下方 Boss 區勾選每週或每月難度。</p>
+        <div class="card-kicker">角色</div>
+        <p class="empty-characters-title">沒有角色</p>
+        <button class="primary-btn" type="button" @click="addCharacter">新增角色</button>
       </section>
 
       <section v-if="activeCharacter" class="boss-workspace" aria-label="Boss 工作區">
         <div class="boss-workspace-head">
-          <div>
-            <div class="card-kicker">Boss 工作區</div>
-            <h2 class="section-title-xl">目前角色：{{ activeCharacter.job }}</h2>
+          <div class="workspace-heading">
+            <div class="card-kicker">Boss</div>
+            <h2 class="section-title-xl">{{ activeCharacter.job }}</h2>
           </div>
-          <div class="workspace-income">
-            <div class="workspace-income-card">
-              <span class="income-label">本角色每週總和</span>
-              <strong class="income-value">{{ formatMeso(activeCharacterWeeklyTotal) }}</strong>
+
+          <div class="workspace-summary-grid">
+            <div class="workspace-summary-card accent">
+              <span class="workspace-summary-label">本角色每週收益</span>
+              <strong class="workspace-summary-value">{{ formatMeso(activeCharacterWeeklyTotal) }}</strong>
             </div>
-            <div class="workspace-income-card monthly">
-              <span class="income-label">本角色每月總和</span>
-              <strong class="income-value">{{ formatMeso(activeCharacterMonthlyTotal) }}</strong>
+            <div class="workspace-summary-card success">
+              <span class="workspace-summary-label">本角色每月收益</span>
+              <strong class="workspace-summary-value">{{ formatMeso(activeCharacterMonthlyTotal) }}</strong>
+            </div>
+            <div class="workspace-summary-card" :class="{ warning: isActiveCharacterWeeklyLimitReached }">
+              <span class="workspace-summary-label">每週 Boss 進度</span>
+              <strong class="workspace-summary-value">{{ activeCharacterWeeklyCount }}/{{ WEEKLY_BOSS_LIMIT }}</strong>
             </div>
           </div>
         </div>
 
-        <div class="boss-controls">
-          <label class="filter-wide">
+        <div class="boss-toolbar">
+          <div class="boss-tabs" role="tablist" aria-label="Boss 分頁">
+            <button
+              class="tab-btn"
+              :class="{ active: activeCharacter.filters.activeTab === 'weekly' }"
+              type="button"
+              @click="updateActiveCharacterFilters({ activeTab: 'weekly' })"
+            >
+              每週 Boss
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: activeCharacter.filters.activeTab === 'monthly' }"
+              type="button"
+              @click="updateActiveCharacterFilters({ activeTab: 'monthly' })"
+            >
+              每月 Boss
+            </button>
+          </div>
+
+          <div class="boss-toolbar-meta">
+            <button v-if="activeFilterCount > 0" class="text-btn" type="button" @click="resetActiveCharacterFilters">
+              清除篩選
+            </button>
+          </div>
+        </div>
+
+        <div class="boss-controls aligned-controls">
+          <label class="filter-wide aligned-search">
             <span>搜尋 Boss</span>
             <input
               :value="activeCharacter.filters.search"
@@ -466,54 +603,29 @@ async function importJson(event) {
               @input="updateActiveCharacterFilters({ search: $event.target.value })"
             />
           </label>
-          <label>
-            <span>難度篩選</span>
-            <select :value="activeCharacter.filters.difficulty" @change="updateActiveCharacterFilters({ difficulty: $event.target.value })">
-              <option value="all">全部</option>
-              <option v-for="difficulty in DIFFICULTY_OPTIONS" :key="difficulty" :value="difficulty">
-                {{ difficulty }}
-              </option>
-            </select>
-          </label>
-          <label>
-            <span>價格排序</span>
+          <label class="aligned-sort">
+            <span>排序方式</span>
             <select :value="activeCharacter.filters.sort" @change="updateActiveCharacterFilters({ sort: $event.target.value })">
-              <option value="price_desc">由高到低</option>
-              <option value="price_asc">由低到高</option>
+              <option value="price_desc">價格由高到低</option>
+              <option value="price_asc">價格由低到高</option>
               <option value="level_desc">建議等級</option>
               <option value="boss_asc">Boss 名稱</option>
             </select>
           </label>
-          <label class="checkbox-label">
+          <label class="checkbox-label aligned-selected">
             <input :checked="activeCharacter.filters.selectedOnly" type="checkbox" @change="updateActiveCharacterFilters({ selectedOnly: $event.target.checked })" />
             <span>只看已勾選</span>
           </label>
+          <button class="boss-reset-toolbar-btn" type="button" @click="resetBossSelection(activeCharacter.id)">
+            重置
+          </button>
         </div>
 
         <div class="boss-meta">
           <div class="boss-meta-group">
-            <span class="boss-count">已勾選每週 Boss：{{ activeCharacterWeeklyCount }}/{{ WEEKLY_BOSS_LIMIT }}</span>
-            <span v-if="isActiveCharacterWeeklyLimitReached" class="limit-text">已達每週 12 隻上限，必須先取消其他每週 Boss 才能再勾選。</span>
+            <span class="boss-count">{{ activeCharacter.job }} 已勾選每週 Boss：{{ activeCharacterWeeklyCount }}/{{ WEEKLY_BOSS_LIMIT }}</span>
+            <span v-if="isActiveCharacterWeeklyLimitReached" class="limit-text">已達每週 12 隻上限，請先取消其他每週 Boss 才能再新增。</span>
           </div>
-        </div>
-
-        <div class="boss-tabs" role="tablist" aria-label="Boss 分頁">
-          <button
-            class="tab-btn"
-            :class="{ active: activeCharacter.filters.activeTab === 'weekly' }"
-            type="button"
-            @click="updateActiveCharacterFilters({ activeTab: 'weekly' })"
-          >
-            每週 Boss
-          </button>
-          <button
-            class="tab-btn"
-            :class="{ active: activeCharacter.filters.activeTab === 'monthly' }"
-            type="button"
-            @click="updateActiveCharacterFilters({ activeTab: 'monthly' })"
-          >
-            每月 Boss
-          </button>
         </div>
 
         <BossCheckboxList
@@ -524,6 +636,7 @@ async function importJson(event) {
           :get-boss-split-price="(bossId) => getBossSplitPrice(activeCharacter, bossId)"
           @toggle="toggleBoss(activeCharacter.id, $event.bossId, $event.checked)"
           @update-party-size="updateBossPartySize(activeCharacter.id, $event.bossId, $event.partySize)"
+          @reset-boss="resetBossSelection(activeCharacter.id, $event.bossId)"
         />
       </section>
     </main>
