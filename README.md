@@ -1,134 +1,80 @@
-# maplegg 專案整理狀態
+# Maplegg
 
-這個專案已經從靜態頁面整理成 **Vue 3 + Vite** 結構，核心功能已經可用。
+Maplegg 是一個用來整理《新楓之谷》Boss 結晶石收益的工具，支援多角色管理、每週與每月 Boss 規劃、分帳試算，以及本地資料保存。
 
-## 已完成核心功能
+## 功能
 
 - 多角色管理
-- 角色卡切換
-- Boss 工作區獨立編輯
+- 每個角色獨立的 Boss 規劃
 - 每週 / 每月 Boss 分頁
-- Boss 搜尋、難度篩選、排序
-- 即時計算：
-  - 每週收入
-  - 每月 Boss 收入
-  - 月收入
-  - 年收入
-- localStorage 保存資料
-- 刪除角色前確認提示
-- 同 Boss 不同難度只能勾一個
-- 角色卡顯示每週已勾選數 `x/12`
-- 已勾選數只統計每週 Boss，不含每月 Boss
+- 同一個 Boss 以單列顯示，難度可直接下拉切換
+- 同 Boss 不同難度互斥選擇
+- 多人分帳試算
+- 每週收益 / 每月收益 / 月收益 / 年收益摘要
+- 搜尋、排序、只看已勾選
+- localStorage 自動保存
+- JSON 匯入 / 匯出
+- 亮色 / 深色模式切換
 
----
+## 技術棧
 
-## 目前已完成的修改
+- Vue 3
+- Vite
+- 原生 CSS
 
-專案已改成 Vite 結構，主要入口為：
+## 安裝與啟動
 
-- `package.json`
-- `index.html`
-- `src/main.js`
+```bash
+npm install
+npm run dev
+```
 
-角色與 Boss UI 已拆開：
+預設開發環境會由 Vite 啟動。
 
-- 上方角色卡區
-- 下方 Boss 工作區
+## 建置
 
-角色操作邏輯：
+```bash
+npm run build
+```
 
-- 新增角色後會自動切到新角色
-- 刪除目前角色會自動切到下一張角色卡
+## 使用方式
 
-最上方摘要目前有：
+1. 新增角色
+2. 切換到要編輯的角色
+3. 在每週或每月分頁中選擇 Boss
+4. 針對每個 Boss 用下拉選單切換難度
+5. 若該 Boss 支援多人分帳，可調整隊伍人數
+6. 在上方摘要查看總收益
 
-- 每週總收入
-- 每月 Boss 收入
-- 月收入 = 每週總收入 × 4 + 每月 Boss 收入
-- 年收入 = 月收入 × 12
-- 角色數量
-- 已勾選 Boss
-- 資料版本
-- 資料更新日
+## 資料說明
 
-Boss 排序功能已新增：
+Boss 資料定義於：
 
-- 建議等級排序
+- `src/data/bosses.js`
 
-其他已完成項目：
+職業清單定義於：
 
-- 角色卡刪除有 `confirm`
-- 整體配色已改成明亮版
+- `src/data/jobs.js`
 
----
-
-## 尚未完成 / TODO
-
----
+應用程式狀態會儲存在瀏覽器 localStorage。
 
 ## 重要檔案
 
-### `src/App.vue`
+- `src/App.vue`：主狀態管理、角色切換、Boss 勾選與收益計算
+- `src/components/CharacterCard.vue`：角色卡 UI
+- `src/components/BossCheckboxList.vue`：Boss 清單 UI
+- `src/components/SummaryBar.vue`：頂部收益摘要
+- `src/styles.css`：全站樣式
+- `src/data/bosses.js`：Boss 結晶石資料
+- `src/data/jobs.js`：職業清單
 
-負責：
+## 目前行為重點
 
-- 主狀態管理
-- localStorage
-- 角色切換
-- 角色刪除
-- Boss 勾選邏輯
-- 收入摘要計算
+- 每個角色的 Boss 勾選互相獨立
+- 每週 Boss 上限為 12 隻
+- 切換同一個 Boss 的難度時，會保留該 Boss 的選取狀態並沿用分帳設定
+- 清除、刪除等操作會要求確認
 
----
+## 備註
 
-### `src/components/CharacterCard.vue`
-
-負責角色卡 UI：
-
-- 顯示每週 Boss 勾選數 `x/12`
-- 職業選擇
-- 切換角色
-- 刪除角色
-
----
-
-### `src/components/BossCheckboxList.vue`
-
-負責：
-
-- Boss 列表勾選 UI
-
----
-
-### `src/components/SummaryBar.vue`
-
-負責：
-
-- 頂部摘要區
-
----
-
-### `src/styles.css`
-
-負責：
-
-- 全站配色
-- 全站版面樣式
-
----
-
-### `src/data/bosses.js`
-
-負責：
-
-- Boss 資料
-
-目前最需要整理的檔案。
-
----
-
-### `src/data/jobs.js`
-
-負責：
-
-- 職業清單
+Boss 結晶石資料目前依專案內資料檔維護，若遊戲版本更新，需要同步更新 `src/data/bosses.js`。

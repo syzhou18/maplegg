@@ -169,7 +169,7 @@ function getBossComparator(sort) {
   }
 }
 
-function getGroupedBosses(character, activeTab) {
+function getGroupedBosses(character, activeTab, draftSelections = {}) {
   const targetResetType = activeTab === "monthly" ? "每月" : "每週";
   const search = character.filters.search.trim();
   const selectedBossIdSet = new Set(character.selectedBossIds);
@@ -192,7 +192,8 @@ function getGroupedBosses(character, activeTab) {
   const groupedRows = Array.from(groups.entries()).map(([bossName, bosses]) => {
     const sortedBosses = [...bosses].sort(comparator);
     const selectedBoss = sortedBosses.find((boss) => selectedBossIdSet.has(boss.id)) || null;
-    const displayBoss = selectedBoss || sortedBosses[0];
+    const draftBoss = selectedBoss ? null : sortedBosses.find((boss) => boss.id === draftSelections[bossName]) || null;
+    const displayBoss = selectedBoss || draftBoss || sortedBosses[0];
 
     return {
       bossName,
@@ -252,8 +253,14 @@ const activeCharacterWeeklyCount = computed(() =>
 
 const activeBosses = computed(() => {
   if (!activeCharacter.value) return [];
-  return getGroupedBosses(activeCharacter.value, activeCharacter.value.filters.activeTab);
+  return getGroupedBosses(
+    activeCharacter.value,
+    activeCharacter.value.filters.activeTab,
+    activeBossDraftSelections.value,
+  );
 });
+
+const activeBossDraftSelections = ref({});
 
 const isActiveCharacterWeeklyLimitReached = computed(() => activeCharacterWeeklyCount.value >= WEEKLY_BOSS_LIMIT);
 const activeFilterCount = computed(() => {
@@ -316,6 +323,13 @@ function updateBossPartySize(characterId, bossId, nextPartySize) {
       },
     };
   });
+}
+
+function updateBossDraftSelection(bossName, bossId) {
+  activeBossDraftSelections.value = {
+    ...activeBossDraftSelections.value,
+    [bossName]: bossId,
+  };
 }
 
 function resetBossSelection(characterId) {
@@ -636,7 +650,7 @@ function toggleTheme() {
           :get-boss-split-price="(bossId) => getBossSplitPrice(activeCharacter, bossId)"
           @toggle="toggleBoss(activeCharacter.id, $event.bossId, $event.checked)"
           @update-party-size="updateBossPartySize(activeCharacter.id, $event.bossId, $event.partySize)"
-          @reset-boss="resetBossSelection(activeCharacter.id, $event.bossId)"
+          @update-draft-selection="updateBossDraftSelection($event.bossName, $event.bossId)"
         />
       </section>
     </main>

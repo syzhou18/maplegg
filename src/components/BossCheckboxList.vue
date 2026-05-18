@@ -25,7 +25,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["toggle", "update-party-size", "reset-boss"]);
+const emit = defineEmits(["toggle", "update-party-size", "reset-boss", "update-draft-selection"]);
 const selectedSet = computed(() => new Set(props.selectedBossIds));
 
 function getActiveBoss(row) {
@@ -45,6 +45,7 @@ function onToggle(row, checked) {
 
 function onDifficultyChange(row, bossId) {
   if (!bossId) return;
+  emit("update-draft-selection", { bossName: row.bossName, bossId });
   if (row.selectedBossId) {
     emit("toggle", { bossId, checked: true });
   }
